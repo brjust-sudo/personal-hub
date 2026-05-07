@@ -1,5 +1,68 @@
 import { useState } from "react";
 
+const CORRECT_PASSWORD = "dt7UK67";
+
+function LockScreen({ onUnlock }) {
+  const [input, setInput] = useState("");
+  const [error, setError] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  const attempt = () => {
+    if (input === CORRECT_PASSWORD) {
+      onUnlock();
+    } else {
+      setError(true);
+      setShake(true);
+      setInput("");
+      setTimeout(() => setShake(false), 500);
+    }
+  };
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0a0c0f",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+      <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+      <div style={{fontSize:38,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:4,color:"white",marginBottom:4}}>PERSONAL HUB</div>
+      <div style={{fontSize:11,color:"#ffffff33",fontFamily:"'DM Mono',monospace",letterSpacing:3,marginBottom:48}}>PRIVATE ACCESS</div>
+      <div style={{
+        width:"100%",maxWidth:320,
+        animation: shake ? "shake 0.4s ease" : "none"
+      }}>
+        <style>{`
+          @keyframes shake {
+            0%,100%{transform:translateX(0)}
+            20%{transform:translateX(-8px)}
+            40%{transform:translateX(8px)}
+            60%{transform:translateX(-6px)}
+            80%{transform:translateX(6px)}
+          }
+        `}</style>
+        <input
+          type="password"
+          value={input}
+          onChange={e=>{setInput(e.target.value);setError(false);}}
+          onKeyDown={e=>e.key==="Enter"&&attempt()}
+          placeholder="Enter password"
+          autoFocus
+          style={{
+            width:"100%",background:"#111418",
+            border:`1px solid ${error?"#f87171":"#ffffff15"}`,
+            borderRadius:12,padding:"14px 18px",color:"white",
+            fontSize:16,outline:"none",fontFamily:"'DM Mono',monospace",
+            letterSpacing:3,textAlign:"center",boxSizing:"border-box",
+            marginBottom:12,transition:"border-color 0.2s"
+          }}
+        />
+        {error && <div style={{fontSize:11,color:"#f87171",fontFamily:"'DM Mono',monospace",textAlign:"center",marginBottom:12,letterSpacing:1}}>INCORRECT PASSWORD</div>}
+        <button onClick={attempt} style={{
+          width:"100%",background:"#4ade80",border:"none",borderRadius:12,
+          padding:"14px",color:"#000",fontWeight:700,cursor:"pointer",
+          fontSize:14,fontFamily:"'DM Mono',monospace",letterSpacing:2
+        }}>ENTER</button>
+      </div>
+    </div>
+  );
+}
+
 const HEALTH = {
   rhr:  [52,54,54,58,52,53,56],
   steps:[11069,14817,14596,12861,16129,16102,7212],
@@ -494,7 +557,9 @@ const TABS=[
 ];
 
 export default function Dashboard(){
+  const [unlocked,setUnlocked]=useState(false);
   const [tab,setTab]=useState("today");
+  if(!unlocked) return <LockScreen onUnlock={()=>setUnlocked(true)}/>;
   return(
     <div style={{minHeight:"100vh",background:"#0a0c0f",fontFamily:"'DM Sans',sans-serif",paddingBottom:48}}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet"/>
