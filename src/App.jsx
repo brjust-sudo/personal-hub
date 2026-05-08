@@ -277,6 +277,7 @@ function useCalendarEvents() {
         const res = await fetch(url);
         if (!res.ok) throw new Error("Calendar fetch failed");
         const data = await res.json();
+        console.log("Calendar items:", JSON.stringify(data.items?.slice(0,2)));
         const grouped = {};
         (data.items || []).forEach(item => {
           const startStr = item.start?.dateTime || item.start?.date;
@@ -345,7 +346,7 @@ function ScheduleTab(){
             <div key={i} style={{display:"flex",gap:12,padding:"9px 0",borderBottom:"1px solid #ffffff07",alignItems:"flex-start"}}>
               <div style={{width:60,fontSize:10,color:"#ffffff44",fontFamily:"'DM Mono',monospace",paddingTop:2,flexShrink:0}}>{formatTime(e)}</div>
               <div style={{width:3,background:accent||"#ffffff20",borderRadius:2,alignSelf:"stretch",flexShrink:0,minHeight:18}}/>
-              <div style={{fontSize:13,color:"white"}}>{e.summary}</div>
+              <div style={{fontSize:13,color:"white"}}>{e.summary || e.title || "(No title)"}</div>
             </div>
           ))}
         </Card>
@@ -647,4 +648,5 @@ export default function Dashboard(){
       </div>
     </div>
   );
+}
 }
