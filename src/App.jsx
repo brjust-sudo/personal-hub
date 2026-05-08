@@ -257,40 +257,99 @@ function TodayTab(){
 }
 
 // ── SCHEDULE ──────────────────────────────────────────────────────────────────
+const GCAL_API_KEY = "AIzaSyD0yiOxSTzSlc8WO5YEpvZKyiBuAYkaxcA";
+const GCAL_ID = "brjust@umich.edu";
+
+function useCalendarEvents() {
+  const [days, setDays] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useState(() => {
+    const fetchEvents = async () => {
+      try {
+        const now = new Date();
+        const start = new Date(now);
+        start.setHours(0,0,0,0);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(GCAL_ID)}/events?key=${GCAL_API_KEY}&timeMin=${start.toISOString()}&timeMax=${end.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=50`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Calendar fetch failed");
+        const data = await res.json();
+        const grouped = {};
+        (data.items || []).forEach(item => {
+          const startStr = item.start?.dateTime || item.start?.date;
+          if (!startStr) return;
+          const d = new Date(startStr);
+          const key = d.toDateString();
+          if (!grouped[key]) grouped[key] = { date: d, events: [] };
+          grouped[key].events.push(item);
+        });
+        const result = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(start);
+          d.setDate(d.getDate() + i);
+          const key = d.toDateString();
+          result.push({
+            date: d,
+            label: i === 0
+              ? `TODAY — ${d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"}).toUpperCase()}`
+              : d.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"}).toUpperCase(),
+            accent: i === 0 ? "#4ade80" : "#ffffff20",
+            events: (grouped[key]?.events || []),
+          });
+        }
+        setDays(result);
+      } catch(e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
+
+  return { days, loading, error };
+}
+
 function ScheduleTab(){
-  const days=[
-    {key:"today",label:"TODAY — WED May 6",accent:"#4ade80"},
-    {key:"thu",  label:"THU May 7 — Travel Day",accent:"#a78bfa"},
-    {key:"fri",  label:"FRI May 8 — vs Minnesota 🔥",accent:"#f97316"},
-  ];
+  const { days, loading, error } = useCalendarEvents();
+
+  const formatTime = (item) => {
+    if (item.start?.date && !item.start?.dateTime) return "All day";
+    const d = new Date(item.start.dateTime);
+    return d.toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",hour12:true});
+  };
+
+  if (loading) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",padding:60}}>
+      <div style={{fontSize:11,color:"#ffffff33",fontFamily:"'DM Mono',monospace",letterSpacing:2}}>LOADING CALENDAR...</div>
+    </div>
+  );
+
+  if (error) return (
+    <Card>
+      <div style={{fontSize:12,color:"#f87171",fontFamily:"'DM Mono',monospace"}}>Could not load calendar. Check API key or calendar permissions.</div>
+    </Card>
+  );
+
   return(
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
-      {days.map(({key,label,accent})=>{
-        const evs=EVENTS.filter(e=>e.day===key);
-        if(!evs.length)return null;
-        return(
-          <Card key={key} accent={accent}>
-            <Lbl color={accent}>{label}</Lbl>
-            {evs.map((e,i)=>(
-              <div key={i} style={{display:"flex",gap:12,padding:"9px 0",borderBottom:"1px solid #ffffff07",alignItems:"flex-start"}}>
-                <div style={{width:52,fontSize:10,color:"#ffffff44",fontFamily:"'DM Mono',monospace",paddingTop:2,flexShrink:0}}>{e.time}</div>
-                <div style={{width:3,background:e.color,borderRadius:2,alignSelf:"stretch",flexShrink:0,minHeight:18}}/>
-                <div style={{fontSize:13,color:"white"}}>{e.tag} {e.title}</div>
-              </div>
-            ))}
-          </Card>
-        );
-      })}
-      <Card style={{background:"#0d1117",border:"1px solid #ffffff08"}}>
-        <Lbl color="#ffffff22">TRAVEL DETAILS</Lbl>
-        <div style={{fontSize:12,color:"#ffffff44",lineHeight:1.9}}>
-          ✈️ Delta 2203 · Departs 4:36 PM<br/>
-          🏨 Renaissance Minneapolis Hotel, The Depot<br/>
-          &nbsp;&nbsp;&nbsp;225 Third Ave S, Minneapolis MN 55401<br/>
-          ⚾ Siebert Field · 1606 SE Eight St, Minneapolis MN 55414<br/>
-          👕 Blue Jersey / Grey Pinstripe Pant
-        </div>
-      </Card>
+      {days.map(({date,label,accent,events},di)=>(
+        <Card key={di} accent={accent}>
+          <Lbl color={accent||"#ffffff44"}>{label}</Lbl>
+          {events.length===0 ? (
+            <div style={{fontSize:12,color:"#ffffff22",fontFamily:"'DM Mono',monospace",padding:"6px 0"}}>NO EVENTS</div>
+          ) : events.map((e,i)=>(
+            <div key={i} style={{display:"flex",gap:12,padding:"9px 0",borderBottom:"1px solid #ffffff07",alignItems:"flex-start"}}>
+              <div style={{width:60,fontSize:10,color:"#ffffff44",fontFamily:"'DM Mono',monospace",paddingTop:2,flexShrink:0}}>{formatTime(e)}</div>
+              <div style={{width:3,background:accent||"#ffffff20",borderRadius:2,alignSelf:"stretch",flexShrink:0,minHeight:18}}/>
+              <div style={{fontSize:13,color:"white"}}>{e.summary}</div>
+            </div>
+          ))}
+        </Card>
+      ))}
     </div>
   );
 }
@@ -564,7 +623,7 @@ export default function Dashboard(){
     <div style={{minHeight:"100vh",background:"#0a0c0f",fontFamily:"'DM Sans',sans-serif",paddingBottom:48}}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet"/>
       <div style={{padding:"26px 20px 0",borderBottom:"1px solid #ffffff09",marginBottom:20}}>
-        <div style={{fontSize:10,color:"#ffffff33",fontFamily:"'DM Mono',monospace",letterSpacing:2,marginBottom:4}}>WEDNESDAY · MAY 6 · 2026</div>
+        <div style={{fontSize:10,color:"#ffffff33",fontFamily:"'DM Mono',monospace",letterSpacing:2,marginBottom:4}}>{new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}).toUpperCase()}</div>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20}}>
           <div style={{fontSize:32,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:3,color:"white",lineHeight:1}}>COMMAND<br/>CENTER</div>
           <div style={{textAlign:"right"}}>
